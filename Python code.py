@@ -393,4 +393,4 @@ customer_features[recent_columns] = (
     customer_features[recent_columns].fillna(0)
 )
 
-print(customer_features.head(5))
+print(customer_features.head(10))
