@@ -393,4 +393,15 @@ customer_features[recent_columns] = (
     customer_features[recent_columns].fillna(0)
 )
 
-print(customer_features.head(10))
+customer_features = customer_features.merge(
+    actual_2025_revenue,
+    on="CustomerID",
+    how="left"
+)
+
+customer_features["Actual_2025_Revenue"] = (
+    customer_features["Actual_2025_Revenue"]
+    .fillna(0)
+)
+
+print(customer_features.columns)
