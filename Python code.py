@@ -420,4 +420,33 @@ customer_features = customer_features.merge(
     how="left"
 )
 
-print(customer_features.head(10))
+behavioural_features = [
+    "TotalOrders",
+    "TotalRevenue",
+    "AverageOrderValue",
+    "RevenueStd",
+    "Recency",
+    "Tenure",
+    "Frequency",
+    "AverageInterval",
+    "IntervalStd",
+    "UniqueProducts",
+    "UniqueCategory",
+    "ReturnCount",
+    "TotalReturnValue",
+    "ReturnRate",
+    "RecentOrders90",
+    "RecentRevenue90",
+    "RecentOrders180",
+    "RecentRevenue180"
+]
+
+
+probabilistic_features = [
+    "2025_Predictions",
+    "P_active",
+    "Expected_Monetary_Value",
+    "Predicted_2025_Revenue"
+]
+
+target = "Actual_2025_Revenue"
