@@ -404,4 +404,20 @@ customer_features["Actual_2025_Revenue"] = (
     .fillna(0)
 )
 
-print(customer_features.columns)
+probabilistic_features = cust_summary[
+    [
+        "CustomerID",
+        "2025_Predictions",
+        "P_active",
+        "Expected_Monetary_Value",
+        "Predicted_2025_Revenue"
+    ]
+].copy()
+
+customer_features = customer_features.merge(
+    probabilistic_features,
+    on="CustomerID",
+    how="left"
+)
+
+print(customer_features.head(10))
