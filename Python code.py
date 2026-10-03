@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 from lifetimes import BetaGeoFitter
 from lifetimes import GammaGammaFitter
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.model_selection import train_test_split
+from xgboost import XGBRegressor
+
 
 df = pd.read_csv('transactions_dataset.csv')
 
@@ -499,15 +502,22 @@ X_behavioural = customer_features[bf_with_missing].copy()
 X_hybrid = customer_features[bf_with_missing + probabilistic_features].copy()
 y = customer_features[target].copy()
 
-print("Behavioural model shape:", X_behavioural.shape)
-print("Hybrid model shape:", X_hybrid.shape)
-print("Target shape:", y.shape)
-print("Behavioural features:")
+X_train, X_test, y_train, y_test = train_test_split(
+    X_behavioural,
+    y,
+    test_size=0.20,
+    random_state=42
+)
 
-print(bf_with_missing)
+behavioural_xgb = XGBRegressor(
+    n_estimators = 500,
+    learning_rate = 0.05,
+    max_depth = 4,
+    subsample = 0.8,
+    colsample_bytree = 0.8,
+    random_state = 42,
+    n_jobs = -1
+)
 
-print("\nProbabilistic features:")
-print(pf_with_missing)
-
-print("\nHybrid features:")
-print(X_hybrid.columns.tolist())
+behavioural_xgb.fit(X_train, y_train)
+print("Behavioural XGBoost model trained successfully.")
