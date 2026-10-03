@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from lifetimes import BetaGeoFitter
 from lifetimes import GammaGammaFitter
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from xgboost import XGBRegressor
 
@@ -520,4 +520,19 @@ behavioural_xgb = XGBRegressor(
 )
 
 behavioural_xgb.fit(X_train, y_train)
-print("Behavioural XGBoost model trained successfully.")
+behavioural_predictions = behavioural_xgb.predict(X_test)
+
+behavioural_mae = mean_absolute_error(y_test, behavioural_predictions)
+behavioural_rmse = mean_squared_error(y_test, behavioural_predictions)**0.5
+behavioural_r2 = r2_score(y_test, behavioural_predictions)
+actual_total = y_test.sum()
+predicted_total = behavioural_predictions.sum()
+
+print("Behavioural XGBoost Results")
+print("---------------------------")
+print(f"MAE: {behavioural_mae:.2f}")
+print(f"RMSE: {behavioural_rmse:.2f}")
+print(f"R²: {behavioural_r2:.4f}")
+print()
+print(f"Actual total revenue:    {actual_total:,.2f}")
+print(f"Predicted total revenue: {predicted_total:,.2f}")
