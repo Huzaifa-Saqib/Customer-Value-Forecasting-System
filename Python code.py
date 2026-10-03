@@ -483,4 +483,31 @@ for feature in probabilistic_imputation:
         customer_features[feature].fillna(median_value)
     )
 
-print(customer_features.head())
+bf_with_missing = behavioural_features + [
+    "RevenueStd_Missing",
+    "AverageInterval_Missing",
+    "IntervalStd_Missing"
+]
+
+pf_with_missing = probabilistic_features + [
+    "2025_Predictions_Missing",
+    "Expected_Monetary_Value_Missing",
+    "Predicted_2025_Revenue_Missing"
+]
+
+X_behavioural = customer_features[bf_with_missing].copy()
+X_hybrid = customer_features[bf_with_missing + probabilistic_features].copy()
+y = customer_features[target].copy()
+
+print("Behavioural model shape:", X_behavioural.shape)
+print("Hybrid model shape:", X_hybrid.shape)
+print("Target shape:", y.shape)
+print("Behavioural features:")
+
+print(bf_with_missing)
+
+print("\nProbabilistic features:")
+print(pf_with_missing)
+
+print("\nHybrid features:")
+print(X_hybrid.columns.tolist())
