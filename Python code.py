@@ -450,3 +450,37 @@ probabilistic_features = [
 ]
 
 target = "Actual_2025_Revenue"
+
+missing_features = [
+    "RevenueStd",
+    "AverageInterval",
+    "IntervalStd",
+    "2025_Predictions",
+    "Expected_Monetary_Value",
+    "Predicted_2025_Revenue"
+]
+
+for feature in missing_features:
+    customer_features[f"{feature}_Missing"] = (
+        customer_features[feature].isna().astype(int)
+    )
+
+customer_features[
+    ["RevenueStd", "AverageInterval", "IntervalStd"]
+] = customer_features[
+    ["RevenueStd", "AverageInterval", "IntervalStd"]
+].fillna(0)
+
+probabilistic_imputation = [
+    "2025_Predictions",
+    "Expected_Monetary_Value",
+    "Predicted_2025_Revenue"
+]
+
+for feature in probabilistic_imputation:
+    median_value = customer_features[feature].median()
+    customer_features[feature] = (
+        customer_features[feature].fillna(median_value)
+    )
+
+print(customer_features.head())
