@@ -536,3 +536,38 @@ print(f"R²: {behavioural_r2:.4f}")
 print()
 print(f"Actual total revenue:    {actual_total:,.2f}")
 print(f"Predicted total revenue: {predicted_total:,.2f}")
+
+X_hybrid_train, X_hybrid_test, y_hybrid_train, y_hybrid_test = train_test_split(
+    X_hybrid,
+    y,
+    test_size=0.20,
+    random_state=42
+)
+
+hybrid_xgb = XGBRegressor(
+    n_estimators = 500,
+    learning_rate = 0.05,
+    max_depth = 4,
+    subsample = 0.8,
+    colsample_bytree = 0.8,
+    random_state = 42,
+    n_jobs = -1
+)
+
+hybrid_xgb.fit(X_hybrid_train, y_hybrid_train)
+hybrid_predictions = hybrid_xgb.predict(X_hybrid_test)
+
+hybrid_mae = mean_absolute_error(y_hybrid_test, hybrid_predictions)
+hybrid_rmse = mean_squared_error(y_hybrid_test, hybrid_predictions)**0.5
+hybrid_r2 = r2_score(y_hybrid_test, hybrid_predictions)
+actual_total = y_hybrid_test.sum()
+predicted_total = hybrid_predictions.sum()
+
+print("Hybrid XGBoost Results")
+print("--------------------------")
+print(f"MAE: {hybrid_mae:.2f}")
+print(f"RMSE: {hybrid_rmse:.2f}")
+print(f"R²: {hybrid_r2:.4f}")
+print()
+print(f"Actual total revenue:    {actual_total:,.2f}")
+print(f"Predicted total revenue: {predicted_total:,.2f}")
