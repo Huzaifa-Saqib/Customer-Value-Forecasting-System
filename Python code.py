@@ -6,7 +6,12 @@ from lifetimes import GammaGammaFitter
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from xgboost import XGBRegressor
-
+from xgboost import XGBClassifier
+from sklearn.metrics import (
+    roc_auc_score,
+    log_loss,
+    brier_score_loss
+)
 
 df = pd.read_csv('transactions_dataset.csv')
 
@@ -616,3 +621,44 @@ print(
     (y_test_class.value_counts(normalize=True) * 100)
     .round(2)
 )
+
+purchase_xgb = XGBClassifier(
+    objective = "binary:logistic",
+    n_estimators=300,
+    learning_rate=0.05,
+    max_depth=4,
+    min_child_weight=5,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    reg_lambda=1.0,
+    random_state=42,
+    n_jobs=-1,
+    eval_metric="logloss"
+)
+
+purchase_xgb.fit(X_train, y_train_class)
+purchase_probability = purchase_xgb.predict_proba(X_test)[:, 1]
+
+print("First 10 purchase probabilities:")
+print(purchase_probability[:10])
+
+roc_auc = roc_auc_score(
+    y_test_class,
+    purchase_probability
+)
+
+logloss = log_loss(
+    y_test_class,
+    purchase_probability
+)
+
+brier = brier_score_loss(
+    y_test_class,
+    purchase_probability
+)
+
+print("Stage 1 Classification Performance")
+print("-----------------------------------")
+print(f"ROC-AUC:   {roc_auc:.4f}")
+print(f"Log Loss:  {logloss:.4f}")
+print(f"Brier Score: {brier:.4f}")
