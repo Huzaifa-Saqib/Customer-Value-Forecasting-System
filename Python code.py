@@ -662,3 +662,93 @@ print("-----------------------------------")
 print(f"ROC-AUC:   {roc_auc:.4f}")
 print(f"Log Loss:  {logloss:.4f}")
 print(f"Brier Score: {brier:.4f}")
+
+positive_train_mask = y_train > 0
+
+X_value_train = X_train.loc[positive_train_mask].copy()
+y_value_train = y_train.loc[positive_train_mask].copy()
+
+print("Stage 2 training customers:", len(y_value_train))
+print()
+print("Positive revenue statistics:")
+print(y_value_train.describe())
+
+y_value_train_log = np.log1p(y_value_train)
+
+print("Original revenue:")
+print(y_value_train.head())
+
+print("\nLog-transformed revenue:")
+print(y_value_train_log.head())
+
+print("\nLog-transformed statistics:")
+print(y_value_train_log.describe())
+
+value_xgb = XGBRegressor(
+    objective="reg:squarederror",
+    n_estimators=300,
+    learning_rate=0.05,
+    max_depth=4,
+    min_child_weight=5,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    reg_lambda=1.0,
+    random_state=42,
+    n_jobs=-1
+)
+
+value_xgb.fit(
+    X_value_train,
+    y_value_train_log
+)
+
+predicted_log_revenue = value_xgb.predict(X_test)
+
+conditional_revenue_prediction = np.expm1(
+    predicted_log_revenue
+)
+
+print("First 10 conditional revenue predictions:")
+print(conditional_revenue_prediction[:10])
+
+print("\nConditional revenue statistics:")
+print(
+    pd.Series(conditional_revenue_prediction).describe()
+)
+
+two_stage_predictions = (
+    purchase_probability *
+    conditional_revenue_prediction
+)
+
+print("First 10 two-stage revenue predictions:")
+print(two_stage_predictions[:10])
+
+print("\nTwo-stage prediction statistics:")
+print(
+    pd.Series(two_stage_predictions).describe()
+)
+
+two_stage_mae = mean_absolute_error(
+    y_test,
+    two_stage_predictions
+)
+
+two_stage_rmse = mean_squared_error(
+    y_test,
+    two_stage_predictions
+) ** 0.5
+
+two_stage_r2 = r2_score(
+    y_test,
+    two_stage_predictions
+)
+
+print("Two-Stage XGBoost Performance")
+print("-----------------------------")
+print(f"MAE:  {two_stage_mae:.2f}")
+print(f"RMSE: {two_stage_rmse:.2f}")
+print(f"R²:   {two_stage_r2:.4f}")
+
+print(mae)
+print(rmse)
