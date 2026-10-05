@@ -510,6 +510,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 
 behavioural_xgb = XGBRegressor(
+    objective = "reg:squarederror",
     n_estimators = 500,
     learning_rate = 0.05,
     max_depth = 4,
@@ -545,6 +546,7 @@ X_hybrid_train, X_hybrid_test, y_hybrid_train, y_hybrid_test = train_test_split(
 )
 
 hybrid_xgb = XGBRegressor(
+    objective = "reg:squarederror",
     n_estimators = 500,
     learning_rate = 0.05,
     max_depth = 4,
@@ -571,3 +573,46 @@ print(f"R²: {hybrid_r2:.4f}")
 print()
 print(f"Actual total revenue:    {actual_total:,.2f}")
 print(f"Predicted total revenue: {predicted_total:,.2f}")
+
+print()
+print("2025_revenue_distribution")
+print("--------------------------")
+print("Total Customers:", len(y_test))
+print("Zero Revenue Customers: ",  (y_test==0).sum())
+print("Positive Revenue Customers: ",  (y_test>0).sum())
+print("Neagtive Revenue Customers: ",  (y_test<0).sum())
+
+print()
+print("Percentages")
+print("Zero:", f"{(y_test==0).mean()*100:.2f}%")
+print("Positive:", f"{(y_test>0).mean()*100:.2f}%")
+print("Negative:", f"{(y_test<0).mean()*100:.2f}%")
+
+print()
+print("Revenue Stats:")
+print(y_test.describe())
+
+print()
+print("Positive Revenue Stats:")
+print(y_test[y_test>0].describe())
+
+y_train_class = (y_train > 0).astype(int)
+y_test_class = (y_test > 0).astype(int)
+
+print("Training classification target:")
+print(y_train_class.value_counts())
+
+print("\nTraining percentages:")
+print(
+    (y_train_class.value_counts(normalize=True) * 100)
+    .round(2)
+)
+
+print("\nTesting classification target:")
+print(y_test_class.value_counts())
+
+print("\nTesting percentages:")
+print(
+    (y_test_class.value_counts(normalize=True) * 100)
+    .round(2)
+)
