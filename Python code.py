@@ -750,5 +750,32 @@ print(f"MAE:  {two_stage_mae:.2f}")
 print(f"RMSE: {two_stage_rmse:.2f}")
 print(f"R²:   {two_stage_r2:.4f}")
 
-print(mae)
-print(rmse)
+model_comparison = pd.DataFrame({
+    "Model" : [
+        "BG/NBD + Gamma-Gamma",
+        "Behavioural XGBoost",
+        "Hybrid XGBoost",
+        "Two-Stage XGBoost"
+    ],
+    "MAE": [
+        1.12,
+        1240.62,
+        1235.64,
+        1114.29
+    ],
+    "RMSE": [
+        2.8,
+        2300.01,
+        2295.71,
+        2394.61
+    ],
+    "R2": [
+        None,
+        0.2990,
+        0.3016,
+        0.2402
+    ]
+
+})
+
+print(model_comparison)
