@@ -579,203 +579,32 @@ print()
 print(f"Actual total revenue:    {actual_total:,.2f}")
 print(f"Predicted total revenue: {predicted_total:,.2f}")
 
-print()
-print("2025_revenue_distribution")
-print("--------------------------")
-print("Total Customers:", len(y_test))
-print("Zero Revenue Customers: ",  (y_test==0).sum())
-print("Positive Revenue Customers: ",  (y_test>0).sum())
-print("Neagtive Revenue Customers: ",  (y_test<0).sum())
-
-print()
-print("Percentages")
-print("Zero:", f"{(y_test==0).mean()*100:.2f}%")
-print("Positive:", f"{(y_test>0).mean()*100:.2f}%")
-print("Negative:", f"{(y_test<0).mean()*100:.2f}%")
-
-print()
-print("Revenue Stats:")
-print(y_test.describe())
-
-print()
-print("Positive Revenue Stats:")
-print(y_test[y_test>0].describe())
-
-y_train_class = (y_train > 0).astype(int)
-y_test_class = (y_test > 0).astype(int)
-
-print("Training classification target:")
-print(y_train_class.value_counts())
-
-print("\nTraining percentages:")
-print(
-    (y_train_class.value_counts(normalize=True) * 100)
-    .round(2)
-)
-
-print("\nTesting classification target:")
-print(y_test_class.value_counts())
-
-print("\nTesting percentages:")
-print(
-    (y_test_class.value_counts(normalize=True) * 100)
-    .round(2)
-)
-
-purchase_xgb = XGBClassifier(
-    objective = "binary:logistic",
-    n_estimators=300,
-    learning_rate=0.05,
-    max_depth=4,
-    min_child_weight=5,
-    subsample=0.8,
-    colsample_bytree=0.8,
-    reg_lambda=1.0,
-    random_state=42,
-    n_jobs=-1,
-    eval_metric="logloss"
-)
-
-purchase_xgb.fit(X_train, y_train_class)
-purchase_probability = purchase_xgb.predict_proba(X_test)[:, 1]
-
-print("First 10 purchase probabilities:")
-print(purchase_probability[:10])
-
-roc_auc = roc_auc_score(
-    y_test_class,
-    purchase_probability
-)
-
-logloss = log_loss(
-    y_test_class,
-    purchase_probability
-)
-
-brier = brier_score_loss(
-    y_test_class,
-    purchase_probability
-)
-
-print("Stage 1 Classification Performance")
-print("-----------------------------------")
-print(f"ROC-AUC:   {roc_auc:.4f}")
-print(f"Log Loss:  {logloss:.4f}")
-print(f"Brier Score: {brier:.4f}")
-
-positive_train_mask = y_train > 0
-
-X_value_train = X_train.loc[positive_train_mask].copy()
-y_value_train = y_train.loc[positive_train_mask].copy()
-
-print("Stage 2 training customers:", len(y_value_train))
-print()
-print("Positive revenue statistics:")
-print(y_value_train.describe())
-
-y_value_train_log = np.log1p(y_value_train)
-
-print("Original revenue:")
-print(y_value_train.head())
-
-print("\nLog-transformed revenue:")
-print(y_value_train_log.head())
-
-print("\nLog-transformed statistics:")
-print(y_value_train_log.describe())
-
-value_xgb = XGBRegressor(
-    objective="reg:squarederror",
-    n_estimators=300,
-    learning_rate=0.05,
-    max_depth=4,
-    min_child_weight=5,
-    subsample=0.8,
-    colsample_bytree=0.8,
-    reg_lambda=1.0,
-    random_state=42,
-    n_jobs=-1
-)
-
-value_xgb.fit(
-    X_value_train,
-    y_value_train_log
-)
-
-predicted_log_revenue = value_xgb.predict(X_test)
-
-conditional_revenue_prediction = np.expm1(
-    predicted_log_revenue
-)
-
-print("First 10 conditional revenue predictions:")
-print(conditional_revenue_prediction[:10])
-
-print("\nConditional revenue statistics:")
-print(
-    pd.Series(conditional_revenue_prediction).describe()
-)
-
-two_stage_predictions = (
-    purchase_probability *
-    conditional_revenue_prediction
-)
-
-print("First 10 two-stage revenue predictions:")
-print(two_stage_predictions[:10])
-
-print("\nTwo-stage prediction statistics:")
-print(
-    pd.Series(two_stage_predictions).describe()
-)
-
-two_stage_mae = mean_absolute_error(
-    y_test,
-    two_stage_predictions
-)
-
-two_stage_rmse = mean_squared_error(
-    y_test,
-    two_stage_predictions
-) ** 0.5
-
-two_stage_r2 = r2_score(
-    y_test,
-    two_stage_predictions
-)
-
-print("Two-Stage XGBoost Performance")
-print("-----------------------------")
-print(f"MAE:  {two_stage_mae:.2f}")
-print(f"RMSE: {two_stage_rmse:.2f}")
-print(f"R²:   {two_stage_r2:.4f}")
-
 model_comparison = pd.DataFrame({
-    "Model" : [
+    "Model": [
         "BG/NBD + Gamma-Gamma",
         "Behavioural XGBoost",
-        "Hybrid XGBoost",
-        "Two-Stage XGBoost"
+        "Hybrid XGBoost"
+    ],
+    "Prediction Target": [
+        "Purchase count",
+        "Customer revenue",
+        "Customer revenue"
     ],
     "MAE": [
-        1.12,
-        1240.62,
-        1235.64,
-        1114.29
+        1.11,
+        817.58,
+        811.90
     ],
     "RMSE": [
-        2.8,
-        2300.01,
-        2295.71,
-        2394.61
+        2.55,
+        1440.29,
+        1436.69
     ],
-    "R2": [
-        None,
-        0.2990,
-        0.3016,
-        0.2402
+    "R²": [
+        "N/A",
+        0.60,
+        0.60
     ]
-
 })
 
 print(model_comparison)
