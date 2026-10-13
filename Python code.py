@@ -6,12 +6,7 @@ from lifetimes import GammaGammaFitter
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from xgboost import XGBRegressor
-from xgboost import XGBClassifier
-from sklearn.metrics import (
-    roc_auc_score,
-    log_loss,
-    brier_score_loss
-)
+from lifelines import KaplanMeierFitter
 
 df = pd.read_csv('transactions_dataset.csv')
 
@@ -608,3 +603,78 @@ model_comparison = pd.DataFrame({
 })
 
 print(model_comparison)
+
+customer_features["Hybrid_Predicted_Revenue"] = hybrid_xgb.predict(X_hybrid)
+customer_features["Customer_Percentile"] = customer_features["Hybrid_Predicted_Revenue"].rank(
+    method="first", ascending=False, pct=True
+    )
+conditions = [
+    customer_features["Customer_Percentile"] <=0.10,
+    customer_features["Customer_Percentile"] <= 0.30,
+    customer_features["Customer_Percentile"] <= 0.5,
+    ]
+
+customer_features["Customer_Segment"] = np.select(conditions,["VIP","Loyal", "Occasional"], default="Low-Value")
+
+print(customer_features["Customer_Segment"].value_counts())
+segment_summary = customer_features.groupby("Customer_Segment").agg(
+    CustomerCount = ("CustomerID", "nunique"),
+    TotalRevenue = ("Actual_2025_Revenue", "sum"),
+    AverageRevenue = ("Actual_2025_Revenue", "mean"),
+    Frequency = ("TotalOrders", "mean"),
+    AverageTenure = ("Tenure", "mean"),
+    LastPurchase = ("Recency", "mean")
+)
+print(segment_summary)
+
+survival_orders = orders[orders["OrderDate"] <= calibration_end].copy()
+survival_orders = survival_orders.sort_values(
+    ["CustomerID", "OrderDate"]
+)
+survival_data = survival_orders.groupby("CustomerID").agg(
+    First_Purchase=("OrderDate", "min"),
+    Last_Purchase=("OrderDate", "max"),
+    Total_Orders=("OrderID", "nunique")
+).reset_index()
+
+next_purchase = survival_orders.groupby("CustomerID")["OrderDate"].apply(
+    lambda dates: dates.sort_values().iloc[1]
+    if len(dates) > 1 else pd.NaT
+)
+
+survival_data["Next_Purchase"] = survival_data["CustomerID"].map(next_purchase)
+survival_data["Event"] = survival_data["Next_Purchase"].notna().astype(int)
+survival_data["Duration"] = (
+    survival_data["Next_Purchase"].fillna(calibration_end)
+    - survival_data["First_Purchase"]
+).dt.days
+
+print(survival_data)
+print(survival_data["Event"].value_counts())
+
+kmf = KaplanMeierFitter()
+kmf.fit(
+    durations=survival_data["Duration"],
+    event_observed=survival_data["Event"]
+    )
+kmf.predict([30, 90, 180, 365])
+
+plt.close("all")
+
+fig, ax = plt.subplots(figsize=(10, 5))
+kmf.plot_survival_function(ci_show=False, ax=ax)
+
+ax.set(
+    title="Time Until Second Purchase",
+    xlabel="Days Since First Purchase",
+    ylabel="Probability of No Second Purchase Yet",
+    ylim=(0, 1)
+)
+
+ax.grid(alpha=0.3)
+plt.tight_layout()
+
+print(survival_data.loc[
+    survival_data["Duration"] == 0,
+    ["CustomerID", "First_Purchase", "Next_Purchase", "Total_Orders"]
+])
