@@ -713,4 +713,37 @@ print(km_results)
 median_days = kmf.median_survival_time_
 print("Median time to second purchase:", median_days)
 
-print(customer_features.columns.tolist())
+first_orders = df.sort_values(["CustomerID" , "OrderDate", "OrderID"]).groupby("CustomerID").first().reset_index()
+print(first_orders.columns)
+
+first_orders_dates = df.groupby("CustomerID")["OrderDate"].min().rename("FirstPurchase")
+first_orders_rows = df.merge(
+    first_orders_dates,
+    on = "CustomerID"
+)
+
+first_orders_rows = first_orders_rows[
+    first_orders_rows["OrderDate"] == first_orders_rows["FirstPurchase"]
+].copy()
+
+initial_features = first_orders_rows.groupby("CustomerID").agg(
+    InitialOrderValue = ("Revenue", "sum"),
+    InitialUniqueProducts = ("ProductID", "nunique")
+).reset_index()
+
+print(initial_features.head())
+
+cox_data = survival_data[["CustomerID", "Duration", "Event"]].merge(
+    initial_features,
+    on = "CustomerID",
+    how = "inner",
+    validate= "one_to_one"
+)
+cox_data = cox_data.dropna()
+
+print("Dataset shape:", cox_data.shape)
+print("\nEvent counts:")
+print(cox_data["Event"].value_counts())
+
+print("\nPreview:")
+print(cox_data.head())
