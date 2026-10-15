@@ -627,54 +627,90 @@ segment_summary = customer_features.groupby("Customer_Segment").agg(
 )
 print(segment_summary)
 
-survival_orders = orders[orders["OrderDate"] <= calibration_end].copy()
-survival_orders = survival_orders.sort_values(
-    ["CustomerID", "OrderDate"]
+cutoff_date = df["OrderDate"].max()
+
+all_orders = (
+    orders[orders["OrderDate"] <= cutoff_date]
+    .drop_duplicates(["CustomerID", "OrderID"])
+    .sort_values(["CustomerID", "OrderDate"])
+    .copy()
 )
-survival_data = survival_orders.groupby("CustomerID").agg(
+
+first_dates = all_orders.groupby("CustomerID")["OrderDate"].min()
+
+cohort_ids = first_dates[
+    (first_dates >= pd.Timestamp("2022-01-01")) &
+    (first_dates < pd.Timestamp("2025-01-01"))
+].index
+
+cohort_orders = all_orders[
+    all_orders["CustomerID"].isin(cohort_ids)
+].copy()
+
+survival_data = cohort_orders.groupby("CustomerID").agg(
     First_Purchase=("OrderDate", "min"),
-    Last_Purchase=("OrderDate", "max"),
     Total_Orders=("OrderID", "nunique")
 ).reset_index()
 
-next_purchase = survival_orders.groupby("CustomerID")["OrderDate"].apply(
-    lambda dates: dates.sort_values().iloc[1]
-    if len(dates) > 1 else pd.NaT
+second_purchase = (
+    cohort_orders.groupby("CustomerID")["OrderDate"]
+    .apply(lambda dates: dates.iloc[1] if len(dates) > 1 else pd.NaT)
 )
 
-survival_data["Next_Purchase"] = survival_data["CustomerID"].map(next_purchase)
-survival_data["Event"] = survival_data["Next_Purchase"].notna().astype(int)
+survival_data["NextPurchase"] = survival_data["CustomerID"].map(
+    second_purchase
+)
+
+survival_data["Event"] = (
+    survival_data["NextPurchase"].notna().astype(int)
+)
+
 survival_data["Duration"] = (
-    survival_data["Next_Purchase"].fillna(calibration_end)
+    survival_data["NextPurchase"]
+    .fillna(cutoff_date)
     - survival_data["First_Purchase"]
 ).dt.days
 
-print(survival_data)
-print(survival_data["Event"].value_counts())
-
 kmf = KaplanMeierFitter()
+
 kmf.fit(
     durations=survival_data["Duration"],
-    event_observed=survival_data["Event"]
-    )
-kmf.predict([30, 90, 180, 365])
+    event_observed=survival_data["Event"],
+    label="Probability of No Second Purchase"
+)
 
 plt.close("all")
 
 fig, ax = plt.subplots(figsize=(10, 5))
+
 kmf.plot_survival_function(ci_show=False, ax=ax)
 
-ax.set(
-    title="Time Until Second Purchase",
-    xlabel="Days Since First Purchase",
-    ylabel="Probability of No Second Purchase Yet",
-    ylim=(0, 1)
-)
-
+ax.set_title("Time Until Second Purchase")
+ax.set_xlabel("Days Since First Purchase")
+ax.set_ylabel("Probability of Not Yet Making a Second Purchase")
+ax.set_ylim(0, 1)
 ax.grid(alpha=0.3)
-plt.tight_layout()
 
-print(survival_data.loc[
-    survival_data["Duration"] == 0,
-    ["CustomerID", "First_Purchase", "Next_Purchase", "Total_Orders"]
-])
+plt.tight_layout()
+#plt.show()
+
+print("Observation cutoff:", cutoff_date)
+print("Customers in cohort:", len(survival_data))
+print("Second-purchase events:", survival_data["Event"].sum())
+print("Censored customers:", (survival_data["Event"] == 0).sum())
+
+print(survival_data.head())
+
+time_points = [30, 90, 180, 365]
+survival_probabilities = kmf.predict(time_points)
+km_results = pd.DataFrame({
+    "Days Since First Purchase": time_points,
+    "No Second Purchase Yet (%)": survival_probabilities.values * 100,
+    "Second Purchase Made (%)": (1 - survival_probabilities.values) * 100
+})
+km_results = km_results.round(2)
+print(km_results)
+median_days = kmf.median_survival_time_
+print("Median time to second purchase:", median_days)
+
+print(customer_features.columns.tolist())
