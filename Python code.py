@@ -7,7 +7,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from xgboost import XGBRegressor
 from lifelines import KaplanMeierFitter
-from lifelines import CoxPHFitter
+import shap
 
 df = pd.read_csv('transactions_dataset.csv')
 
@@ -693,7 +693,7 @@ ax.set_ylim(0, 1)
 ax.grid(alpha=0.3)
 
 plt.tight_layout()
-plt.show()
+#plt.show()
 
 print("Observation cutoff:", cutoff_date)
 print("Customers in cohort:", len(survival_data))
@@ -753,7 +753,7 @@ for p in ax.patches:
                     textcoords='offset points')
 
 plt.tight_layout()
-plt.show()
+#plt.show()
 
 all_winback = customer_features[customer_features["Churn_Status"] == "Win-Back"]
 
@@ -778,3 +778,68 @@ print(f"Percentage of Total Customer Targeted:   {pct_of_total_customers_targete
 print(f"Total Value in Win-Back Pool:            ${total_winback_pool_value:,.2f}")
 print(f"Projected Revenue Recovered (10% Win):    ${recovered_revenue_10:,.2f}")
 print(f"Percentage Revenue Increase:              {percentage_revenue_increase:.1f}%")
+
+explainer = shap.TreeExplainer(hybrid_xgb)
+shap_values = explainer.shap_values(X_hybrid_test)
+base_value = float(np.ravel(explainer.expected_value)[0])
+
+print("------------")
+print("SHAP values shape:", shap_values.shape)
+print("X_hybrid_test shape:", X_hybrid_test.shape)
+print(f"Baseline (average prediction): {base_value:,.2f}")
+
+plt.close("all")
+plt.figure(figsize = (10, 8))
+shap.summary_plot(shap_values, X_hybrid_test, plot_type="bar", show=False)
+plt.title("SHAP Feature Importance (Hybrid XGBoost)")
+plt.tight_layout()
+#plt.show()
+
+plt.close("all")
+plt.figure(figsize=(10, 8))
+shap.summary_plot(shap_values, X_hybrid_test, show=False)
+plt.title("SHAP Summary Plot (Hybrid XGBoost)")
+plt.tight_layout()
+#plt.show()
+
+plt.close("all")
+plt.figure(figsize=(9, 6))
+shap.dependence_plot("AverageOrderValue", shap_values, X_hybrid_test, show=False)
+plt.title("SHAP Dependence: AverageOrderValue")
+plt.tight_layout()
+#plt.show()
+
+plt.close("all")
+i = int(np.argmax(hybrid_predictions))
+explanation = shap.Explanation(
+    values=shap_values[i],
+    base_values=base_value,
+    data=X_hybrid_test.iloc[i].values,
+    feature_names=X_hybrid_test.columns.tolist()
+)
+
+shap.plots.waterfall(explanation, max_display=12, show=False)
+plt.tight_layout()
+#plt.show()
+
+print(f"Baseline (average prediction): {base_value:,.2f}")
+print(f"Prediction for this customer:  {hybrid_predictions[i]:,.2f}")
+
+plt.close("all")
+j = int(np.argmin(hybrid_predictions))
+explanation_low = shap.Explanation(
+    values=shap_values[j],
+    base_values=base_value,
+    data=X_hybrid_test.iloc[j].values,
+    feature_names=X_hybrid_test.columns.tolist()
+)
+
+shap.plots.waterfall(explanation_low, max_display=12, show=False)
+plt.tight_layout()
+#plt.show()
+
+print(f"Baseline (average prediction): {base_value:,.2f}")
+print(f"Prediction for this customer:  {hybrid_predictions[j]:,.2f}")
+
+print("\n---THE CONNECTED MATRIX REPORT ---")
+print(matrix_report)
