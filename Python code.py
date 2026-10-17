@@ -7,6 +7,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from xgboost import XGBRegressor
 from lifelines import KaplanMeierFitter
+from lifelines import CoxPHFitter
 
 df = pd.read_csv('transactions_dataset.csv')
 
@@ -692,7 +693,7 @@ ax.set_ylim(0, 1)
 ax.grid(alpha=0.3)
 
 plt.tight_layout()
-#plt.show()
+plt.show()
 
 print("Observation cutoff:", cutoff_date)
 print("Customers in cohort:", len(survival_data))
@@ -701,49 +702,79 @@ print("Censored customers:", (survival_data["Event"] == 0).sum())
 
 print(survival_data.head())
 
-time_points = [30, 90, 180, 365]
-survival_probabilities = kmf.predict(time_points)
-km_results = pd.DataFrame({
-    "Days Since First Purchase": time_points,
-    "No Second Purchase Yet (%)": survival_probabilities.values * 100,
-    "Second Purchase Made (%)": (1 - survival_probabilities.values) * 100
-})
-km_results = km_results.round(2)
-print(km_results)
-median_days = kmf.median_survival_time_
-print("Median time to second purchase:", median_days)
+last_purchase_dates = df.groupby("CustomerID")["OrderDate"].max()
+days_since_last = (cutoff_date - last_purchase_dates).dt.days
 
-first_orders = df.sort_values(["CustomerID" , "OrderDate", "OrderID"]).groupby("CustomerID").first().reset_index()
-print(first_orders.columns)
+churned_customer = days_since_last[days_since_last > 400].index.tolist()
+winback_customer = days_since_last[(days_since_last >= 300) & (days_since_last <= 400)].index.tolist()
+active_customer = days_since_last[days_since_last < 300].index.tolist()
 
-first_orders_dates = df.groupby("CustomerID")["OrderDate"].min().rename("FirstPurchase")
-first_orders_rows = df.merge(
-    first_orders_dates,
-    on = "CustomerID"
+print("\n--- CUSTOMER CHURN SEGMENTATION REPORT ---")
+print(f"Observation Cutoff Date: {cutoff_date.strftime('%Y-%m-%d')}")
+print(f"Active Customers (<300 days): {len(active_customer)}")
+print(f"Win-Back Targets (300-400 days): {len(winback_customer)}")
+print(f"Officially Churned (>400 days): {len(churned_customer)}")
+
+customer_features["DaysSinceLastPurchase"] = customer_features["CustomerID"].map(days_since_last)
+
+conditions_time = [
+    customer_features["DaysSinceLastPurchase"] > 400,
+    (customer_features["DaysSinceLastPurchase"] >= 300) & (customer_features["DaysSinceLastPurchase"] <= 400)
+]
+choices_time = ["Churned", "Win-Back"]
+customer_features["Churn_Status"] = np.select(conditions_time, choices_time, default="Active")
+
+matrix_report = pd.crosstab(
+    customer_features["Customer_Segment"], 
+    customer_features["Churn_Status"],
+    margins=True
 )
+print("\n---THE CONNECTED MATRIX REPORT ---")
+print(matrix_report)
 
-first_orders_rows = first_orders_rows[
-    first_orders_rows["OrderDate"] == first_orders_rows["FirstPurchase"]
-].copy()
+matrix_data = matrix_report.iloc[:-1, :-1]
 
-initial_features = first_orders_rows.groupby("CustomerID").agg(
-    InitialOrderValue = ("Revenue", "sum"),
-    InitialUniqueProducts = ("ProductID", "nunique")
-).reset_index()
+ax = matrix_data.plot(kind="bar", figsize=(10, 6), width=0.8)
 
-print(initial_features.head())
+plt.title("Customer Segments by Churn Status Gaps")
+plt.xlabel("Customer Value Segment")
+plt.ylabel("Number of Customers")
+plt.xticks(rotation=0)
+plt.grid(axis="y", alpha=0.3)
+plt.legend(title="Churn Status")
 
-cox_data = survival_data[["CustomerID", "Duration", "Event"]].merge(
-    initial_features,
-    on = "CustomerID",
-    how = "inner",
-    validate= "one_to_one"
-)
-cox_data = cox_data.dropna()
+for p in ax.patches:
+    height = p.get_height()
+    if height > 0:
+        ax.annotate(f'{int(height)}', 
+                    (p.get_x() + p.get_width() / 2., height), 
+                    ha='center', va='bottom', 
+                    fontsize=9, xytext=(0, 3), 
+                    textcoords='offset points')
 
-print("Dataset shape:", cox_data.shape)
-print("\nEvent counts:")
-print(cox_data["Event"].value_counts())
+plt.tight_layout()
+plt.show()
 
-print("\nPreview:")
-print(cox_data.head())
+all_winback = customer_features[customer_features["Churn_Status"] == "Win-Back"]
+
+total_customers = len(customer_features)
+total_winback_customers = len(all_winback)
+
+target_count_10 = int(round(total_winback_customers * 0.10))
+total_winback_pool_value = all_winback["Predicted_2025_Revenue"].sum()
+recovered_revenue_10 = total_winback_pool_value * 0.10
+
+baseline_active_rev = customer_features[customer_features["Churn_Status"] == "Active"]["Predicted_2025_Revenue"].sum()
+percentage_revenue_increase = (recovered_revenue_10 / baseline_active_rev) * 100
+
+pct_of_total_customers_targeted = (target_count_10 / total_customers) * 100
+
+print("\n---10% WIN-BACK SIMULATION REPORT ---")
+print(f"Total Customers:                      {total_customers}")
+print(f"Total Win-Back Customers Available:       {total_winback_customers}")
+print(f"Simulation Targeting Strategy:            10.00% of Win-Back Pool")
+print(f"Number of Customers Targeted:             {target_count_10}")
+print(f"Percentage of Total Customer Targeted:   {pct_of_total_customers_targeted:.2f}%")
+print(f"Total Value in Win-Back Pool:            ${total_winback_pool_value:,.2f}")
+print(f"Projected Revenue Recovered (10% Win):    ${recovered_revenue_10:,.2f}")
+print(f"Percentage Revenue Increase:              {percentage_revenue_increase:.1f}%")
