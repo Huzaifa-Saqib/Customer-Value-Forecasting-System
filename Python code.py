@@ -861,6 +861,3 @@ print(f"Prediction for this customer:  {hybrid_predictions[j]:,.2f}")
 
 print("\n---THE CONNECTED MATRIX REPORT ---")
 print(matrix_report)
-
-print(model_comparison)
-print(purchase_intervals.quantile([0.90, 0.95, 0.97, 0.98, 0.99]))

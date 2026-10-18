@@ -41,9 +41,11 @@ Python · Pandas · NumPy · XGBoost · Scikit-learn · Lifelines · SHAP · Mat
 Both XGBoost models clearly beat the naive baseline. The hybrid model's MAE is about 68% lower (811.90 against 2,543.02) and its RMSE is about 69% lower. The baseline's R² of -3.04 means repeating last year's revenue is a worse forecast than predicting the average for every customer.
 
 Between the two XGBoost models the gap is small. The hybrid model improves MAE by under 1%.
+
 ### Purchase gaps and churn thresholds
 
 Days between consecutive purchases, across all customers. Most gaps are short, with a thin tail of long ones.
+
 
 | Percentile of purchase gaps | Days |
 |---|---|
