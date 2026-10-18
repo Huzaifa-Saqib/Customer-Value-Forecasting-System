@@ -10,7 +10,7 @@ An end-to-end customer analytics project combining probabilistic modeling, XGBoo
 
 ## Tech Stack
 
-Python · Pandas · NumPy · XGBoost · Scikit-learn · Lifelines · SHAP · Matplotlib
+Python · Pandas · NumPy · XGBoost · Scikit-learn · Lifetines · Lifelines · SHAP · Matplotlib
 
 ## Methodology and Flow
 
@@ -113,12 +113,11 @@ Churn is almost entirely a Low-Value problem: 99.7% of churned customers are in 
 |---|---|---|---|
 | Now | Win-Back: VIP and Loyal (311) | Personal outreach with a tailored offer before these customers pass the 400 day line | Reactivation rate; revenue vs. the $307k scenario |
 | Now | Win-Back: Occasional (278) | Automated reminder sequence with a time-limited incentive | Reactivation rate; cost per reactivation |
-| Now | Low-Value (5,730; 3,470 churned) | Low-cost automated email only; avoid discounts and paid media | Cost per customer kept low |
+| Now | Low-Value (5,730; 3,470 churned) | Low-cost automated email only, avoid discounts and paid media | Cost per customer kept low |
 | Next | New customers | Trigger a follow-up around day 60 to 100 without a second purchase, since about half of new customers have made a second purchase by day 110 | Second-purchase rate within 200 days |
 | Next | VIP (1,145) | Account management and an alert when a VIP nears the 300 day Win-Back line | VIP Active rate (now 94%) |
 | Next | Loyal to VIP | Grow order value through bundles, upsell and basket thresholds; the model shows order value, not frequency, drives revenue | Average order value; share moving to VIP |
 | Next | Returns | Review returns policy and capture return reasons; track net-negative customers | Return rate; net revenue per customer |
-| Later | Model governance | Refresh the model quarterly, fix the limitations below, and keep comparing against the naive baseline | MAE and R² vs. baseline each quarter |
 
 ## Limitations
 
