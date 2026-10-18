@@ -124,6 +124,7 @@ plt.hist(purchase_intervals, bins=50)
 plt.xlabel("Days Between Purchases")
 plt.ylabel("Number of Purchase Intervals")
 plt.title("Distribution of Customer Purchase Intervals")
+#plt.show()
 
 orders= (
     df.groupby(["CustomerID", "OrderID"]).agg(
@@ -203,8 +204,8 @@ mae = mean_absolute_error(
 
 rmse = mean_squared_error(
     bgf_validation["Actual_2025"],
-    bgf_validation["2025_Predictions"]
-)
+    bgf_validation["2025_Predictions"] 
+) **0.5
 
 positive_orders = calibration_orders[calibration_orders["OrderRevenue"]>0].copy()
 customer_monetary = (
@@ -575,28 +576,45 @@ print()
 print(f"Actual total revenue:    {actual_total:,.2f}")
 print(f"Predicted total revenue: {predicted_total:,.2f}")
 
+rev_2024 = (
+    orders[(orders["OrderDate"] >= "2024-01-01") & (orders["OrderDate"] <= "2024-12-31")]
+    .groupby("CustomerID")["OrderRevenue"].sum()
+)
+
+test_ids = customer_features.loc[X_hybrid_test.index, "CustomerID"]
+naive_predictions = test_ids.map(rev_2024).fillna(0).values
+
+naive_mae = mean_absolute_error(y_hybrid_test, naive_predictions)
+naive_rmse = mean_squared_error(y_hybrid_test, naive_predictions) ** 0.5
+naive_r2 = r2_score(y_hybrid_test, naive_predictions)
+
 model_comparison = pd.DataFrame({
     "Model": [
+        "Naive Baseline",
         "BG/NBD + Gamma-Gamma",
         "Behavioural XGBoost",
         "Hybrid XGBoost"
     ],
     "Prediction Target": [
+        "Customer revenue",
         "Purchase count",
         "Customer revenue",
         "Customer revenue"
     ],
     "MAE": [
+        2543.01,
         1.11,
         817.58,
         811.90
     ],
     "RMSE": [
-        2.55,
+        4589.56,
+        1.6,
         1440.29,
         1436.69
     ],
     "R²": [
+        -3.04,
         "N/A",
         0.60,
         0.60
@@ -843,3 +861,6 @@ print(f"Prediction for this customer:  {hybrid_predictions[j]:,.2f}")
 
 print("\n---THE CONNECTED MATRIX REPORT ---")
 print(matrix_report)
+
+print(model_comparison)
+print(purchase_intervals.quantile([0.90, 0.95, 0.97, 0.98, 0.99]))
